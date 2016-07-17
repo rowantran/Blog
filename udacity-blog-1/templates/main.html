@@ -1,0 +1,21 @@
+{% import "post.html" as post %}
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Blog</title>
+    </head>
+    <body>
+        <h1>Blog</h1>
+
+        <a href="/logout">Log out</a>
+        {% if auth %}
+            Welcome, {{username}}!
+            <a href="/newpost">New post</a>
+        {% else %}
+            <a href="/register">Register</a>
+            <a href="/login">Login</a>
+        {% endif %}
+
+        {{post.render_posts(posts)}}
+    </body>
+</html>

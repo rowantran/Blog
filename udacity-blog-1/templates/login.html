@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Log in</title>
+    </head>
+    <body>
+        <h1>Log in</h1>
+
+        <form method="post">
+            <label>
+                <div>Username</div>
+            </label>
+            <input type="text" name="username" value="{{username}}">
+
+            <label>
+                <div>Password</div>
+            </label>
+            <input type="password" name="password">
+
+            <input type="submit">
+
+            <div class="error">{{error}}</div>
+        </form>
+    </body>
+</html>
