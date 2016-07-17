@@ -12,4 +12,8 @@
     {% endfor %}
 {% endmacro %}
 
-{{render_posts(post)}}
+{% if post[0] %}
+    {{render_posts(post)}}
+{% else %}
+    Post does not exist.
+{% endif %}

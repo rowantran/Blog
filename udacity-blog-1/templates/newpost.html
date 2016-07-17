@@ -8,13 +8,15 @@
             <label>
                 <div>Title</div>
             </label>
-            <input type="text" name="title">
+            <input type="text" name="title" value="{{title}}">
 
             <label>
                 <div>Body</div>
             </label>
-            <textarea name="body"></textarea>
+            <textarea name="body">{{body}}</textarea>
             
+            <div class="error">{{error}}</div>
+
             <input type="submit">
         </form>
     </body>

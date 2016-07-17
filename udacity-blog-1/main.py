@@ -181,18 +181,22 @@ class LogoutHandler(Handler):
 
 
 class NewPostHandler(Handler):
+    def render_newpost(self, title='', body='', error=''):
+        self.render('newpost.html', title=title, body=body, error=error)
+
     def get(self):
-        self.render('newpost.html')
+        self.render_newpost()
     
     def post(self):
         title = self.request.get('title')
         body = self.request.get('body')
 
-        new_post = Post(title = title, body = body)
-        new_post.put()
-
-        self.redirect('/post/{post_id}'.format(post_id = new_post.key().id()))
-
+        if title and body:
+            new_post = Post(title = title, body = body)
+            new_post.put()
+            self.redirect('/post/{post_id}'.format(post_id = new_post.key().id()))
+        else:
+            self.render_newpost(title, body, "Title and body are required.")
 
 class PostHandler(Handler):
     def get(self, post_id):
