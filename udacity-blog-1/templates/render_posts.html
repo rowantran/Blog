@@ -1,0 +1,57 @@
+{% macro render_posts(posts, auth, user='', username='') %}
+    {% for post in posts %}
+        <div class="post">
+            {{post.likes}} likes
+            <div class="post-header">
+                <a href="/post/{{post.key().id()}}">
+                    <div class="post-title">{{post.title}}</div>
+                </a>
+                by {{post.author.username}}
+                <div class="post-date">{{post.date | string}}</div>
+            </div>
+            <div class="post-body">
+                {{post.body}}
+            </div>
+
+            {% if auth %}
+                {% if username != post.author.username %}
+                    <a href="/vote/{{post.key().id()}}?action=up">
+                        {% if post.key().id() in user.likes %}
+                            Unlike
+                        {% else %}
+                            Like
+                        {% endif %}
+                    </a>
+                    <a href="/vote/{{post.key().id()}}?action=down">
+                        {% if post.key().id() in user.dislikes %}
+                            Undislike
+                        {% else %}
+                            Dislike
+                        {% endif %}
+                    </a>
+                {% else %}
+                    <a href="/edit/{{post.key().id()}}">Edit</a>
+                    <form method="post" action="/delete/{{post.key().id()}}">
+                        <input type="submit" id="submit" value="Delete">
+                    </form>
+                {% endif %}
+                <form method="post" action="/comment/{{post.key().id()}}">
+                    <textarea name="comment"></textarea>
+                    <input type="submit">
+                </form>
+            {% endif %}
+            {% for comment in post.get_comments() %}
+                <div class="comment">
+                    <div class="comment-author">{{comment.author.username}}</div>
+                    <div class="comment-body">{{comment.body}}</div>
+                </div>
+                {% if username == comment.author.username %}
+                    <a href="/editcomment/{{comment.key().id()}}">Edit</a>
+                    <form method="post" action="/deletecomment/{{comment.key().id()}}">
+                        <input type="submit" value="Delete">
+                    </form>
+                {% endif %}
+            {% endfor %}
+        </div>
+    {% endfor %}
+{% endmacro %}

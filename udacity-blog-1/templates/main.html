@@ -1,4 +1,4 @@
-{% import "post.html" as post %}
+{% from "render_posts.html" import render_posts %}
 <!DOCTYPE html>
 <html>
     <head>
@@ -16,6 +16,6 @@
             <a href="/login">Login</a>
         {% endif %}
 
-        {{post.render_posts(posts)}}
+        {{render_posts(posts, auth, user, username)}}
     </body>
 </html>

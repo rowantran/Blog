@@ -39,11 +39,24 @@ class User(db.Model):
     email = db.StringProperty(required = False)
     password = db.StringProperty(required = True)
     salt = db.StringProperty(required = True)
+    likes = db.ListProperty(long)
+    dislikes = db.ListProperty(long)
 
 
 class Post(db.Model):
+    author = db.ReferenceProperty(User, required = True)
+    likes = db.IntegerProperty(default = 0, required = False)
     title = db.StringProperty(required = True)
     date = db.DateTimeProperty(auto_now_add = True)
+    body = db.TextProperty(required = True)
+
+    def get_comments(self):
+        return Comment.gql("WHERE post = :post", post=self)
+
+
+class Comment(db.Model):
+    author = db.ReferenceProperty(User, required = True)
+    post = db.ReferenceProperty(Post, required = True)
     body = db.TextProperty(required = True)
 
 
@@ -66,8 +79,11 @@ def delete_cookie(response, name):
 def generate_cookie(username):
     return "{}|{}".format(username, hash_username(username))
 
+def get_cookie_username(cookie):
+    return cookie.split("|")[0]
+
 def verify_cookie(cookie):
-    username = cookie.split("|")[0]
+    username = get_cookie_username(cookie)
     return cookie == generate_cookie(username)
 
 # Authentication functions
@@ -93,11 +109,11 @@ class Handler(webapp2.RequestHandler):
 
 
 class MainHandler(Handler):
-    def render_main(self, username='', auth=False):
+    def render_main(self, user='', username='', auth=False):
         posts = Post.all()
         posts.order('-date')
 
-        self.render('main.html', username=username, posts=posts, auth=auth)
+        self.render('main.html', user=user, username=username, posts=posts, auth=auth)
 
     def get(self):
         user = self.request.cookies.get('User')
@@ -108,15 +124,16 @@ class MainHandler(Handler):
                 self.render_main()
             else:
                 username = user.split("|")[0]
-                self.render_main(username, True)
+                user = User.gql("WHERE username=:username", username=username).get()
+                self.render_main(user, username, True)
 
 
 class RegisterHandler(Handler):
     def render_register(self, username='', email='', errors=''):
         self.render('register.html', username=username, email=email, errors=errors)
-    
+
     def get(self):
-        self.render_register() 
+        self.render_register()
 
     def post(self):
         username = self.request.get('username')
@@ -133,7 +150,7 @@ class RegisterHandler(Handler):
             errors.append("Password is required.")
         if username_exists(username):
             errors.append("Username already exists.")
-    
+
         if errors:
             self.render_register(username, email, '<br>'.join(errors))
         else:
@@ -163,7 +180,7 @@ class LoginHandler(Handler):
         username = self.request.get('username')
         password = self.request.get('password')
 
-        user = User.gql('WHERE username=:username', username=username).get() 
+        user = User.gql('WHERE username=:username', username=username).get()
         if user:
             if authenticate_user(user, password):
                 write_cookie(self.response, 'User', generate_cookie(username))
@@ -185,23 +202,202 @@ class NewPostHandler(Handler):
         self.render('newpost.html', title=title, body=body, error=error)
 
     def get(self):
-        self.render_newpost()
-    
-    def post(self):
-        title = self.request.get('title')
-        body = self.request.get('body')
-
-        if title and body:
-            new_post = Post(title = title, body = body)
-            new_post.put()
-            self.redirect('/post/{post_id}'.format(post_id = new_post.key().id()))
+        user = self.request.cookies.get('User')
+        if user:
+            self.render_newpost()
         else:
-            self.render_newpost(title, body, "Title and body are required.")
+            self.redirect("/")
+ 
+    def post(self):
+        user = self.request.cookies.get('User')
+        if user:
+            if verify_cookie(user):
+                username = get_cookie_username(user)
+                author = User.gql("WHERE username=:username", username=username).get()
+                title = self.request.get('title')
+                body = self.request.get('body')
+
+                if title and body:
+                    new_post = Post(author = author, title = title, body = body)
+                    new_post.put()
+                    self.redirect('/post/{post_id}'.format(post_id = new_post.key().id()))
+                else:
+                    self.render_newpost(title, body, "Title and body are required.")
+            else:
+                self.redirect("/")
+        else:
+            self.redirect("/")
+
 
 class PostHandler(Handler):
     def get(self, post_id):
+        user = self.request.cookies.get('User')
         post = Post.get_by_id(int(post_id))
-        self.render('post.html', post=[post])
+
+        if user:
+            user_data = User.gql("WHERE username=:username", username=get_cookie_username(user)).get()
+            self.render('post.html', post=[post], auth=verify_cookie(user), user=user_data, username=get_cookie_username(user))
+        else:
+            self.render('post.html', post=[post], auth=False, user='', username='')
+
+class VoteHandler(Handler):
+    def get(self, post_id):
+        action = self.request.get('action')
+        user = self.request.cookies.get('User')
+        post = Post.get_by_id(int(post_id))
+        if user:
+            if verify_cookie(user):
+                user_data = User.gql("WHERE username=:username", username=get_cookie_username(user)).get()
+                if post:
+                    post_id = int(post_id)
+                    if action == "up":
+                        if post_id in user_data.likes:
+                            post.likes -= 1
+                            user_data.likes.remove(post_id)
+                        elif post_id in user_data.dislikes:
+                            post.likes += 2
+                            user_data.dislikes.remove(post_id)
+                            user_data.likes.append(post_id)
+                        else:
+                            post.likes += 1
+                            user_data.likes.append(post_id)
+                    elif action == "down":
+                        if post_id in user_data.dislikes:
+                            post.likes += 1
+                            user_data.dislikes.remove(post_id)
+                        elif post_id in user_data.likes:
+                            post.likes -= 2
+                            user_data.likes.remove(post_id)
+                            user_data.dislikes.append(post_id)
+                        else:
+                            post.likes -= 1
+                            user_data.dislikes.append(post_id)
+                    user_data.put()
+                    post.put()
+                    self.redirect("/")
+                else:
+                    self.write("Post does not exist.")
+            else:
+                self.redirect("/")
+        else:
+            self.redirect("/")
+
+
+class EditHandler(Handler):
+    def render_edit(self, title='', body='', error=False):
+        if error:
+            error_text = "Both a title and body are required."
+        else:
+            error_text = ""
+        self.render('editpost.html', title=title, body=body, error=error_text)
+
+    def get(self, post_id):
+        post = Post.get_by_id(int(post_id))
+        title = post.title
+        body = post.body
+        self.render_edit(title, body, False)
+
+    def post(self, post_id):
+        post_data = Post.get_by_id(int(post_id))
+        if post_data:
+            user = self.request.cookies.get('User')
+            if user:
+                if verify_cookie(user):
+                    if get_cookie_username(user) == post_data.author.username:
+                        title = self.request.get('title')
+                        body = self.request.get('body')
+                        if title and body:
+                            post_data.title = title
+                            post_data.body = body
+                            post_data.put()
+                            self.redirect("/")
+                        else:
+                            self.render_edit(title, body, True)
+                    else:
+                        self.redirect("/")
+                else:
+                    self.redirect("/")
+            else:
+                self.redirect("/")
+        else:
+            self.write("Post not found.")
+
+
+class DeleteHandler(Handler):
+    def post(self, post_id):
+       post_data = Post.get_by_id(int(post_id))
+       if post_data:
+           user = self.request.cookies.get('User')
+           if user:
+               if verify_cookie(user):
+                    if get_cookie_username(user) == post_data.author.username:
+                        post_data.delete()
+                    self.redirect("/")
+               else:
+                   self.redirect("/")
+           else:
+               self.redirect("/")
+       else:
+           self.write("Post not found.")
+
+
+class CommentHandler(Handler):
+    def post(self, post_id):
+        post_data = Post.get_by_id(int(post_id))
+        if post_data:
+            user = self.request.cookies.get('User')
+            if user:
+                if verify_cookie(user):
+                    user_data = User.gql("WHERE username=:username", username=get_cookie_username(user)).get()
+                    body = self.request.get('comment')
+                    if body:
+                        new_comment = Comment(author=user_data, post=post_data, body=body)
+                        new_comment.put()
+                    self.redirect("/")
+            else:
+                self.redirect("/")
+        else:
+            self.write("Post not found.")
+
+
+class EditCommentHandler(Handler):
+    def get(self, comment_id):
+        comment = Comment.get_by_id(int(comment_id))
+        if comment:
+            user = self.request.cookies.get('User')
+            if user:
+                if verify_cookie(user):
+                    self.render('editcomment.html', comment=comment.body)
+                else:
+                    self.redirect("/")
+            else:
+                self.redirect("/")
+        else:
+            self.write("Comment not found.")
+
+    def post(self, comment_id):
+        comment = Comment.get_by_id(int(comment_id))
+        if comment:
+            user = self.request.cookies.get('User')
+            if user:
+                if verify_cookie(user):
+                    comment_text = self.request.get('comment')
+                    if comment_text:
+                        comment.body = comment_text
+                        comment.put()
+                        self.redirect("/")
+
+
+class DeleteCommentHandler(Handler):
+    def post(self, comment_id):
+        comment = Comment.get_by_id(int(comment_id))
+        if comment:
+            user = self.request.cookies.get('User')
+            if user:
+                if verify_cookie(user):
+                    if get_cookie_username(user) == comment.author.username:
+                        comment.delete()
+                        self.redirect("/")
 
 
 app = webapp2.WSGIApplication([
@@ -210,5 +406,11 @@ app = webapp2.WSGIApplication([
     webapp2.Route(r'/login', handler=LoginHandler, name='login'),
     webapp2.Route(r'/logout', handler=LogoutHandler, name='logout'),
     webapp2.Route(r'/newpost', handler=NewPostHandler, name='newpost'),
-    webapp2.Route(r'/post/<post_id:\d+>', handler=PostHandler, name='post')
+    webapp2.Route(r'/post/<post_id:\d+>', handler=PostHandler, name='post'),
+    webapp2.Route(r'/vote/<post_id:\d+>', handler=VoteHandler, name='vote'),
+    webapp2.Route(r'/edit/<post_id:\d+>', handler=EditHandler, name='edit'),
+    webapp2.Route(r'/delete/<post_id:\d+>', handler=DeleteHandler, name='delete'),
+    webapp2.Route(r'/comment/<post_id:\d+>', handler=CommentHandler, name='comment'),
+    webapp2.Route(r'/editcomment/<comment_id:\d+>', handler=EditCommentHandler, name='editcomment'),
+    webapp2.Route(r'/deletecomment/<comment_id:\d+>', handler=DeleteCommentHandler, name='deletecomment')
 ], debug=True)

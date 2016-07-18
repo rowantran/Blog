@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Edit post</title>
+    </head>
+    <body>
+        <form method="post">
+            <label>
+                <div>Title</div>
+            </label>
+            <input type="text" name="title" value="{{title}}">
+            
+            <label>
+                <div>Body</div>
+            </label>
+            <textarea name="body">{{body}}</textarea>
+
+            <div class="error">{{error}}</div>
+
+            <input type="submit">
+        </form>
+
+        <a href="javascript:history.back()">Cancel</a>
+    </body>
+</html>
