@@ -1,57 +1,76 @@
 {% macro render_posts(posts, auth, user='', username='') %}
     {% for post in posts %}
         <div class="post">
-            {{post.likes}} likes
             <div class="post-header">
-                <a href="/post/{{post.key().id()}}">
-                    <div class="post-title">{{post.title}}</div>
-                </a>
-                by {{post.author.username}}
-                <div class="post-date">{{post.date | string}}</div>
+                <h2>{{post.title}}</h2>
+                <div class="post-header-extra">
+                    by {{post.author.username}} on
+                    {{post.date.strftime("%b %d, %Y")}}
+                </div>
             </div>
             <div class="post-body">
-                {{post.body}}
+{{post.body}}
             </div>
 
-            {% if auth %}
-                {% if username != post.author.username %}
-                    <a href="/vote/{{post.key().id()}}?action=up">
-                        {% if post.key().id() in user.likes %}
-                            Unlike
-                        {% else %}
-                            Like
+            <div class="additional-actions">
+                <div>
+                    {{post.likes}} likes
+                    <div>
+                    {% if auth %}
+                        {% if username != post.author.username %}
+                            <a href="/vote/{{post.key().id()}}?action=up">
+                                {% if post.key().id() in user.likes %}
+                                    Unlike
+                                {% else %}
+                                    Like
+                                {% endif %} |
+                            </a>
+                            <a href="/vote/{{post.key().id()}}?action=down">
+                                {% if post.key().id() in user.dislikes %}
+                                    Undislike
+                                {% else %}
+                                    Dislike
+                                {% endif %}
+                            </a>
                         {% endif %}
-                    </a>
-                    <a href="/vote/{{post.key().id()}}?action=down">
-                        {% if post.key().id() in user.dislikes %}
-                            Undislike
-                        {% else %}
-                            Dislike
-                        {% endif %}
-                    </a>
-                {% else %}
-                    <a href="/edit/{{post.key().id()}}">Edit</a>
-                    <form method="post" action="/delete/{{post.key().id()}}">
-                        <input type="submit" id="submit" value="Delete">
-                    </form>
-                {% endif %}
-                <form method="post" action="/comment/{{post.key().id()}}">
-                    <textarea name="comment"></textarea>
-                    <input type="submit">
-                </form>
-            {% endif %}
-            {% for comment in post.get_comments() %}
-                <div class="comment">
-                    <div class="comment-author">{{comment.author.username}}</div>
-                    <div class="comment-body">{{comment.body}}</div>
+                    {% endif %}
+                    </div>
                 </div>
-                {% if username == comment.author.username %}
-                    <a href="/editcomment/{{comment.key().id()}}">Edit</a>
-                    <form method="post" action="/deletecomment/{{comment.key().id()}}">
-                        <input type="submit" value="Delete">
-                    </form>
-                {% endif %}
-            {% endfor %}
+
+                <div class="post-actions">
+                    {% if auth %}
+                        {% if post.author.username == username %}
+                            <a href="/edit/{{post.key().id()}}">Edit</a> |
+                            <a href="/delete/{{post.key().id()}}">Delete</a> |
+                        {% endif %}
+                    {% endif %}
+
+                    <a href="/post/{{post.key().id()}}">
+                        Permalink
+                    </a>
+                </div>
+            </div>
         </div>
+
+        <hr>
+
+        {% if auth %}
+        <div class="new-comment">
+            <form method="post" action="/comment/{{post.key().id()}}">
+                <textarea name="comment"></textarea>
+                <input type="submit">
+            </form>
+        </div>
+        {% endif %}
+        {% for comment in post.get_comments() %}
+            <div class="comment">
+                <div class="comment-author">by {{comment.author.username}}</div>
+                <div class="comment-body">{{comment.body}}</div>
+            {% if username == comment.author.username %}
+                <a href="/editcomment/{{comment.key().id()}}">Edit </a> |  
+                <a href="/deletecomment/{{comment.key().id()}}">Delete</a>
+            {% endif %}
+            </div>
+        {% endfor %}
     {% endfor %}
 {% endmacro %}

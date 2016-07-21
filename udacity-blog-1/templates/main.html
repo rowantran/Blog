@@ -3,19 +3,27 @@
 <html>
     <head>
         <title>Blog</title>
+        <link href="static/css/style.css" rel="stylesheet">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
     </head>
     <body>
-        <h1>Blog</h1>
+        <header>
+            <h1>Blog</h1>
+        </header>
+        
+        <div class="container">
+            <div class="user">
+                {% if auth %}
+                    Welcome, {{username}}!
+                    <a href="/newpost">New post</a> |
+                    <a href="/logout">Log out</a>
+                {% else %}
+                    <a href="/register">Register</a> |
+                    <a href="/login">Login</a>
+                {% endif %}
+            </div>
 
-        <a href="/logout">Log out</a>
-        {% if auth %}
-            Welcome, {{username}}!
-            <a href="/newpost">New post</a>
-        {% else %}
-            <a href="/register">Register</a>
-            <a href="/login">Login</a>
-        {% endif %}
-
-        {{render_posts(posts, auth, user, username)}}
+            {{render_posts(posts, auth, user, username)}}
+        </div>
     </body>
 </html>

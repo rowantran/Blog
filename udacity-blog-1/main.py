@@ -324,7 +324,7 @@ class EditHandler(Handler):
 
 
 class DeleteHandler(Handler):
-    def post(self, post_id):
+    def get(self, post_id):
        post_data = Post.get_by_id(int(post_id))
        if post_data:
            user = self.request.cookies.get('User')
@@ -389,7 +389,7 @@ class EditCommentHandler(Handler):
 
 
 class DeleteCommentHandler(Handler):
-    def post(self, comment_id):
+    def get(self, comment_id):
         comment = Comment.get_by_id(int(comment_id))
         if comment:
             user = self.request.cookies.get('User')

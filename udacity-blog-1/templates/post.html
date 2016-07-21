@@ -1,7 +1,18 @@
 {% from "render_posts.html" import render_posts %}
-
-{% if post[0] %}
-    {{render_posts(post, auth, user, username)}}
-{% else %}
-    Post does not exist.
-{% endif %}
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>{{post[0].title}}</title>
+        <link href="/static/css/style.css" rel="stylesheet">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body>
+        <div class="container">
+            {% if post[0] %}
+                {{render_posts(post, auth, user, username)}}
+            {% else %}
+                Post does not exist.
+            {% endif %}
+        </div>
+    </body>
+</html>
